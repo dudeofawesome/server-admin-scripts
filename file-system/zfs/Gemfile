@@ -1,0 +1,8 @@
+source 'https://rubygems.org' do
+  gem 'tty-prompt'
+
+  group :development do
+    gem 'prettier'
+  end
+end
+
