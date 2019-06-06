@@ -146,7 +146,7 @@ def main
 
   if options.auto_accept or
      !prompt.no?(
-       'Repair database? This may be destructive! It also require Plex to be stopped temporarily.'
+       'Repair database? This may be destructive! It also requires Plex to be stopped temporarily.'
      )
     db_path =
       "#{
