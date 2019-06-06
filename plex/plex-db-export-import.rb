@@ -56,8 +56,7 @@ def repair_database(db_path)
 
     # remove original database now that we've got it backed up and dumped
     File.delete(db_path)
-    File.delete("#{db_path}-shm")
-    File.delete("#{db_path}-wal")
+    delete_database_tmp_files(db_path)
 
     if dump.split("\n").last.include?('REVERT')
       # replace REVERT with COMMIT
@@ -79,6 +78,11 @@ def repair_database(db_path)
   else
     raise "Couldn't find file \"#{db_path}\""
   end
+end
+
+def delete_database_tmp_files(db_path)
+  File.delete("#{db_path}-shm")
+  File.delete("#{db_path}-wal")
 end
 
 # @param db_path [String]
@@ -152,6 +156,7 @@ def main
     begin
       repair_database(db_path)
       check_database(db_path)
+      delete_database_tmp_files(db_path)
     rescue StandardError => err
       puts err.message
       puts err
