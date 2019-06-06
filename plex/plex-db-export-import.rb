@@ -14,8 +14,10 @@ def repair_database(db_path)
     # check if database is corrupted in a way we can repair
     # @type [SQLite3::Database]
     db = SQLite3::Database.new(db_path)
+
+    integrity_check_output = nil
     begin
-      puts db.execute('PRAGMA integrity_check')
+      integrity_check_output = db.execute('PRAGMA integrity_check')
     rescue SQLite3::CorruptException => err
       if err.message != 'database disk image is malformed'
         raise "Unable to handle the following database corruption:\n#{err}"
@@ -23,8 +25,12 @@ def repair_database(db_path)
         # continue program
       end
     else
-      puts 'Database appears to be healthy already!'
-      return
+      if (integrity_check_output == 'ok')
+        puts 'Database appears to be healthy already!'
+        return
+      else
+        # continue program
+      end
     end
 
     # backup corrupted database in case things break
