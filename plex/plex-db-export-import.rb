@@ -28,7 +28,11 @@ def repair_database(db_path)
     end
 
     # backup corrupted database in case things break
-    FileUtils.copy_file(db_path, "#{db_path}-#{Time.now.iso8601}")
+    backup_database_path = "#{db_path}-#{Time.now.iso8601}"
+    FileUtils.copy_file(db_path, backup_database_path)
+
+    # check that backup was made
+    raise 'Backing up database failed!' if !File.exist?(backup_database_path)
 
     # cleanup database so we can operate on it (not sure if this is necessary)
     begin
