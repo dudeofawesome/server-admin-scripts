@@ -74,7 +74,7 @@ def repair_database(db_path)
     begin
       `sqlite3 "#{db_path}" < dump.sql`
       File.delete('dump.sql')
-      `sudo chown plex:plex #{db_path}`
+      `sudo chown plex:plex "#{db_path}"`
     rescue StandardError => err
       raise err
       File.delete('dump.sql')
