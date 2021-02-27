@@ -107,11 +107,15 @@ def check_database(db_path)
 end
 
 def start_plex
+  puts 'Starting Plex'
   `sudo systemctl start plexmediaserver.service`
+  puts 'Started Plex'
 end
 
 def stop_plex
+  puts 'Stopping Plex'
   `sudo systemctl stop plexmediaserver.service`
+  puts 'Stopped Plex'
 end
 
 class PlexDBExportImport

@@ -3,8 +3,9 @@
 
 require 'optparse'
 require 'ostruct'
-
 require 'tty-prompt'
+
+require_relative 'utils'
 
 KEYFILE_DIR = '/var/lib/zfs-encryption/keys'
 
@@ -36,39 +37,47 @@ def get_drive_dev_map
   Hash[ls_out.map { |k, _v| [k.split[0], k.split[1]] }]
 end
 
+# @return [Array<String>]
 def get_drive_devs
   # List all ATA drive devices by ID
   `
-    
     ls -la /dev/disk/by-id/ | grep "\\Wata-.*[a-zA-Z]\$" | awk '{print $9}'
-
   `.split
 end
 
-def get_zpools
-  # List all zpools
-  # -H hides column headers
-  `zpool list -H -o name`.split
-end
-
+# @return [Array<String>]
 def get_devs_in_zpool(pool_name)
   # Get zpool status and cut up to get devs
   # -P shows full device path
+  # @type [Array<String>]
   zpool_devs =
-    `zpool status -P #{pool_name} | grep -P '\\t  ' | awk '{print $1}'`.split
+    `
+      zpool status -P "#{pool_name}" | grep -P '\\t  /dev/' | awk '{print $1}'
+    `.split
+    .map { |dev|
+      if dev.start_with?("/dev/disk/by-id/")
+        dev.split("/dev/disk/by-id/")[1].split("-part1")[0].strip
+      else
+        dev.strip
+      end
+    }
 
-  if zpool_devs.any? {|i| i.start_with?('/dev/mapper/')}
-    puts 'uses mapped drives'
+  if zpool_devs.any? { |i| i.start_with?('/dev/mapper/') }
     drive_dev_map = get_drive_dev_map
-    mapped_devs =
-      Hash[
-        `
-          dmsetup deps -o devname |
-            awk '{print substr($1,0,length($1)-1),substr($5,2,length($5)-2)}'
-        `.split("\n")
-          .map { |k, _v| [k.split[0], drive_dev_map[k.split[1]]] }
-      ]
+
+    zpool_devs = zpool_devs.map { |dev|
+      if dev.start_with?('/dev/mapper/')
+        device_mapper_id = `realpath "#{dev}"`.strip.split('/dev/')[1]
+        block_dev_id = `ls "/sys/block/#{device_mapper_id}/slaves/"`.strip
+
+        drive_dev_map[block_dev_id]
+      else
+        dev
+      end
+    }
   end
+
+  zpool_devs
 end
 
 def cryptsetup_luksformat(pool_name, dev_id)
@@ -77,17 +86,29 @@ def cryptsetup_luksformat(pool_name, dev_id)
 
   `
     cryptsetup luksFormat -c aes-xts-plain64 -s 512 -h sha512 /dev/disk/by-id/
-      #{dev_id}
-      #{keyfile}
+    "#{dev_id}"
+    "#{keyfile}"
   `
 end
 
 def cryptsetup_luksopen(pool_name, dev_id)
-  `cryptsetup luksOpen /dev/disk/by-id/#{dev_id} #{pool_name}0_crypt`
+  devs_in_pool = get_devs_in_zpool(pool_name).count
+  command = %(cryptsetup luksOpen "/dev/disk/by-id/#{dev_id}"
+    "#{pool_name}#{devs_in_pool}_crypt")
+  puts "Make sure to mount device at boot with '#{command}'"
+  `#{command}`
 end
 
+# @param keyfile_path [String]
 def gen_luks_key(keyfile_path)
-  `dd if=/dev/urandom of=#{keyfile_path} bs=1024 count=4`
+  puts "Make sure to backup your new keyfile: '#{keyfile_path}'"
+  `dd if=/dev/urandom of="#{keyfile_path}" bs=1024 count=4`
+end
+
+# @param pool_name [String]
+# @param dev_path [String] fully qualified device path
+def add_dev_to_zpool(pool_name, dev_path)
+  `zpool add "#{pool_name}" "#{dev_path}"` 
 end
 
 def main
@@ -96,16 +117,35 @@ def main
 
   selected_zpool = prompt.select('Select zpool', get_zpools)
 
-  selected_drives = nil
-  while selected_drives.nil? || selected_drives.size <= 0
-    puts 'No drives selected!' unless selected_drives.nil?
-    selected_drives =
-      prompt.multi_select('Select drive', get_drive_devs, per_page: 10)
+  selected_devs = nil
+  while selected_devs.nil? || selected_devs.size <= 0
+    puts 'No drives selected!' unless selected_devs.nil?
+    used_devs = get_zpools.map{ |pool| get_devs_in_zpool(pool) }.flatten
+    unused_devs = get_drive_devs.select { |dev| !used_devs.include?(dev) }
+    selected_devs =
+      prompt.multi_select('Select drive', unused_devs, per_page: 10)
   end
 
-  puts "Adding #{selected_drives.join(', ')} to #{selected_zpool}"
+  puts "Are you sure you want to format and add the following drives to the " +
+    "ZFS \"#{selected_zpool}\" pool?"
+  puts
+  puts selected_devs.map { |dev| "  #{dev}"}
+  puts
+  puts "YOU WILL LOSE ALL DATA CURRENTLY ON THEM!"
+
+  if prompt.no?("Wipe and add drives to pool?")
+    puts "Stopping"
+    exit
+  else
+    puts "Adding #{selected_devs.join(', ')} to #{selected_zpool}"
+
+    for dev in selected_devs do
+      cryptsetup_luksformat(selected_zpool, dev)
+      cryptsetup_luksopen(selected_zpool, dev)
+    end
+  end
 end
 
-# main()
+main()
 # puts get_drive_dev_map
-puts get_devs_in_zpool('backup')
+# puts get_devs_in_zpool('backup')
