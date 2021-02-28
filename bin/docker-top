@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+
+SORT_COL=1
+REFRESH=false
+
+while getopts hs:r option
+do
+  case "${option}" in
+    s)
+      case "${OPTARG}" in 
+        c|cpu) SORT_COL=2;;
+        m|mem) SORT_COL=3;;
+        n|net) SORT_COL=5;;
+        # TODO: sorting by disk usage is broken. not sure what's up
+        d|disk|block) SORT_COL=6;;
+        name) SORT_COL=1;;
+        *) echo "Unknown sort \"$OPTARG\". c m n d are supported."
+      esac
+      ;;
+    r) REFRESH=true;;
+    h)
+      echo -e ""
+      echo -e "Usage:\tdocker-top [OPTIONS]"
+      echo -e ""
+      echo -e "Display container(s) resource usage statistics"
+      echo -e ""
+      echo -e "Options:"
+      echo -e "\t-s [opt]\tSort table by (cpu|mem|net|disk|name)"
+      echo -e "\t-r\t\tRefresh the results"
+      echo -e "\t-h\t\tShow this message"
+      exit 0
+      ;;
+esac
+done
+
+docker stats --no-stream --format \
+  "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}\t{{.NetIO}}\t{{.BlockIO}}" \
+  | (read -r; printf "%s\n" "$REPLY"; sort -r -k $SORT_COL -h)
+
