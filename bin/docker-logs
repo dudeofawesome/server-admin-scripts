@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+
+function main() {
+  CONTAINER="${@: -1}"
+  TAIL_LEN=50
+  FOLLOW="-f"
+
+  while getopts hft:-: option
+  do
+    case "${option}" in
+      f)
+        FOLLOW=""
+        ;;
+      t)
+        TAIL_LEN="$OPTARG"
+        ;;
+      -)
+        case "${OPTARG}" in
+          completion)
+            echo "Adding fish completions"
+            fish_completions
+            exit 0
+            ;;
+          help) help_menu;;
+          *)
+            echo "Unknown argument '$OPTARG'"
+            exit 1
+            ;;
+        esac
+        ;;
+      h) help_menu;;
+      *)
+        echo "Unknown argument"
+        help_menu
+        exit 1
+        ;;
+    esac
+  done
+
+  docker logs $FOLLOW --tail="$TAIL_LEN" $CONTAINER
+}
+
+function fish_completions() {
+  COMPLETIONS_DIR=$(pkg-config --variable completionsdir fish)
+  echo 'complete -c docker-logs -f -w "docker logs"' | sudo tee -a "$COMPLETIONS_DIR/docker-logs.fish"
+}
+
+function help_menu() {
+  echo -e ""
+  echo -e "Usage:\tdocker-logs [OPTIONS] CONTAINER"
+  echo -e ""
+  echo -e "Options:"
+  echo -e "   -f         Don't follow log output"
+  echo -e "   -t [opt]   Number of lines to show from the end of the logs (default 50)"
+  echo -e "   -h         Show this message"
+  exit 0
+}
+
+main "$@"
+
+# if [[ "$(basename $SHELL)" == "fish" ]]; then
+#   fish_completions
+# fi
+
