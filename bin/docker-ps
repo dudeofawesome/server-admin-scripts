@@ -1,4 +1,48 @@
 #!/usr/bin/env bash
 
-docker ps -a --format "table {{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.RunningFor}}" | most
+function main() {
+  while getopts hft:-: option
+  do
+    case "${option}" in
+      -)
+        case "${OPTARG}" in
+          completion)
+            echo "Adding fish completions"
+            fish_completions
+            exit 0
+            ;;
+          help) help_menu;;
+          *)
+            echo "Unknown argument '$OPTARG'"
+            exit 1
+            ;;
+        esac
+        ;;
+      h) help_menu;;
+      *)
+        echo "Unknown argument"
+        help_menu
+        exit 1
+        ;;
+    esac
+  done
 
+  docker ps -a --format "table {{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.RunningFor}}" | most
+}
+
+function fish_completions() {
+  COMPLETIONS_DIR=$(pkg-config --variable completionsdir fish)
+  echo 'complete -c docker-logs -f -w "docker logs"' | sudo tee -a "$COMPLETIONS_DIR/docker-logs.fish"
+}
+
+function help_menu() {
+  echo -e ""
+  echo -e "Usage:\tdocker-ps"
+  echo -e ""
+  echo -e "Options:"
+  echo -e "   --completion  Installs fish completions"
+  echo -e "   -h            Show this message"
+  exit 0
+}
+
+main "$@"

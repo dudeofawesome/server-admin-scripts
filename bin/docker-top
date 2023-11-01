@@ -7,7 +7,7 @@ while getopts hs:r option
 do
   case "${option}" in
     s)
-      case "${OPTARG}" in 
+      case "${OPTARG}" in
         c|cpu) SORT_COL=2;;
         m|mem) SORT_COL=3;;
         n|net) SORT_COL=5;;
@@ -25,9 +25,10 @@ do
       echo -e "Display container(s) resource usage statistics"
       echo -e ""
       echo -e "Options:"
-      echo -e "\t-s [opt]\tSort table by (cpu|mem|net|disk|name)"
-      echo -e "\t-r\t\tRefresh the results"
-      echo -e "\t-h\t\tShow this message"
+      echo -e "   -s [opt]      Sort table by (cpu|mem|net|disk|name)"
+      echo -e "   -r            Refresh the results"
+      # echo -e "   --completion  Installs fish completions"
+      echo -e "   -h, --help    Show this message"
       exit 0
       ;;
 esac

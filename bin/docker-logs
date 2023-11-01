@@ -50,9 +50,10 @@ function help_menu() {
   echo -e "Usage:\tdocker-logs [OPTIONS] CONTAINER"
   echo -e ""
   echo -e "Options:"
-  echo -e "   -f         Don't follow log output"
-  echo -e "   -t [opt]   Number of lines to show from the end of the logs (default 50)"
-  echo -e "   -h         Show this message"
+  echo -e "   -f            Don't follow log output"
+  echo -e "   -t [opt]      Number of lines to show from the end of the logs (default 50)"
+  echo -e "   --completion  Installs fish completions"
+  echo -e "   -h, --help    Show this message"
   exit 0
 }
 
